@@ -9,6 +9,7 @@ class URL(Enum):
     supplier_products = 'https://catalog.wb.ru/sellers/v2/catalog?dest=-1257786&curr=rub&sort=popular&spp={spp}&supplier={supplier}&page={page}'
     product_info = 'https://card.wb.ru/cards/v2/detail?dest=-1257786&curr=rub&nm={nmID}'
     warehouse_name = 'https://static-basket-01.wbbasket.ru/vol0/data/stores-data.json'
+    similar_queries = 'https://similar-queries.wildberries.ru/api/v2/search/query?query={query}&lang=ru'
 
 
 headers = {
@@ -428,3 +429,53 @@ async def fetchProductStocks(nmID):
                 return getStocks(product), await getWarehouseStocks(product)
             except:
                 return None
+
+
+async def fetchQuery(query, typeQuery):
+    if typeQuery == 'normquery':
+        url = URL.wildberries_position_autoadvert.value.format(
+            query=query, page=1, dest=-1257786)
+    elif typeQuery == 'similar_queries':
+        url = URL.similar_queries.value.format(query=query)
+    else:
+        return None
+
+    for attemp in range(10):
+        print(attemp)
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                    url,
+                    headers=headers) as response:
+
+                if response.status == 200:
+                    try:
+                        text = await response.text()
+                        data = json.loads(text)
+
+                        if typeQuery == 'normquery':
+                            result = data.get('metadata').get('normquery')
+                        elif typeQuery == 'similar_queries':
+                            result = data.get('query')
+
+                    except Exception as e:
+                        print(e)
+                        # logging.exception(e)
+                        continue
+
+                    break
+                await asyncio.sleep(0.1)
+
+    else:
+        result = None
+
+    return result
+
+
+async def fetchSearchQuery(query):
+    tasks = [fetchQuery(query, typeQuery)
+             for typeQuery
+             in ['normquery', 'similar_queries']]
+    results = await asyncio.gather(*tasks)
+
+    return results[0], results[1]

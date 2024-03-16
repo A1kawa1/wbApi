@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Path
+from fastapi import FastAPI, Path, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
 from typing import List
 
 from auxiliary import (fetchPositionAutoadvertProduct, fetchSupplierProducts,
                        fetchFindProductPosition, fetchProductImages,
-                       fetchProductStocks)
+                       fetchProductStocks, fetchSearchQuery)
 
 
 class AutoadvertProduct(BaseModel):
@@ -76,6 +76,17 @@ async def productStocks(nmID: int = Path(description='id товара', gt=0)):
         'nmID': nmID,
         'totalStocks': result[0] if not result is None else None,
         'stocks': result[1] if not result is None else None
+    })
+
+
+@app.get('/api/searchQuery')
+async def searchQuery(query: str = Query(description='Поисковый запрос', min_length=1)):
+    normQuery, similarQueries = await fetchSearchQuery(query)
+
+    return JSONResponse({
+        'query': query,
+        'normQuery': normQuery,
+        'similarQueries': similarQueries
     })
 
 
