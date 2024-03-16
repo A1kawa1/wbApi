@@ -3,7 +3,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
 from typing import List
 
-from auxiliary import fetchPositionAutoadvertProduct, fetchSupplierProducts, fetchFindProductPosition
+from auxiliary import (fetchPositionAutoadvertProduct, fetchSupplierProducts,
+                       fetchFindProductPosition, fetchProductImages,
+                       fetchProductStocks)
 
 
 class AutoadvertProduct(BaseModel):
@@ -49,8 +51,31 @@ async def supplierProducts(supplier: int = Path(description='id продавца
     result = await fetchSupplierProducts(supplier)
 
     return JSONResponse({
-        'totalCount': len(result) if not result is None else None,
+        'supplierID': supplier,
+        'totalAmount': len(result) if not result is None else None,
         'data': result
+    })
+
+
+@app.get('/api/productImages/{nmID}')
+async def supplierProducts(nmID: int = Path(description='id товара', gt=0)):
+    result = await fetchProductImages(nmID)
+
+    return JSONResponse({
+        'nmID': nmID,
+        'picsAmount': len(result) if not result is None else None,
+        'picsUrls': result
+    })
+
+
+@app.get('/api/productStocks/{nmID}')
+async def productStocks(nmID: int = Path(description='id товара', gt=0)):
+    result = await fetchProductStocks(nmID)
+
+    return JSONResponse({
+        'nmID': nmID,
+        'totalStocks': result[0] if not result is None else None,
+        'stocks': result[1] if not result is None else None
     })
 
 

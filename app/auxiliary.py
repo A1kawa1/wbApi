@@ -7,6 +7,8 @@ import json
 class URL(Enum):
     wildberries_position_autoadvert = 'https://search.wb.ru/exactmatch/ru/common/v5/search?query={query}&resultset=catalog&sort=popular&curr=rub&dest={dest}&page={page}'
     supplier_products = 'https://catalog.wb.ru/sellers/v2/catalog?dest=-1257786&curr=rub&sort=popular&spp={spp}&supplier={supplier}&page={page}'
+    product_info = 'https://card.wb.ru/cards/v2/detail?dest=-1257786&curr=rub&nm={nmID}'
+    warehouse_name = 'https://static-basket-01.wbbasket.ru/vol0/data/stores-data.json'
 
 
 headers = {
@@ -19,6 +21,87 @@ headers = {
     'Sec-Fetch-Site': 'cross-site',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OPR/100.0.0.0 (Edition Yx GX)',
 }
+
+
+def getBasket(vol):
+    if 0 <= vol <= 143:
+        return '01'
+    elif 144 <= vol <= 287:
+        return '02'
+    elif 288 <= vol <= 431:
+        return '03'
+    elif 432 <= vol <= 719:
+        return '04'
+    elif 720 <= vol <= 1007:
+        return '05'
+    elif 1008 <= vol <= 1061:
+        return '06'
+    elif 1062 <= vol <= 1115:
+        return '07'
+    elif 1116 <= vol <= 1169:
+        return '08'
+    elif 1170 <= vol <= 1313:
+        return '09'
+    elif 1314 <= vol <= 1601:
+        return '10'
+    elif 1602 <= vol <= 1655:
+        return '11'
+    elif 1656 <= vol <= 1919:
+        return '12'
+    elif 1920 <= vol <= 2045:
+        return '13'
+    elif 2046 <= vol <= 2189:
+        return '14'
+    elif 2091 <= vol <= 2405:
+        return '15'
+    else:
+        return '16'
+
+
+def getStocks(product):
+    try:
+        stocks = 0
+        for i in product['sizes']:
+            for k in i['stocks']:
+                stocks += k['qty']
+        return stocks
+    except:
+        return 0
+
+
+async def getWarehouseStocks(product):
+    try:
+        async with aiohttp.ClientSession() as client:
+            async with client.get(URL.warehouse_name.value) as response:
+                warehouse_data = await response.json()
+                warehouse_name = {warehouse.get('id'): warehouse.get('name')
+                                  for warehouse
+                                  in warehouse_data}
+
+                stocks = {}
+                for i in product['sizes']:
+                    for k in i['stocks']:
+                        if k['wh'] not in stocks:
+                            stocks[k['wh']] = {
+                                'name': warehouse_name.get(k.get('wh')),
+                                'totalStocks': 0,
+                                'data': {}
+                            }
+
+                        size_name = i.get('name') if i.get(
+                            'name') else 'noneName'
+                        orig_name = i.get('origName') if i.get(
+                            'name') else 'noneName'
+
+                        stocks[k['wh']]['data'][size_name] = {
+                            'origName': orig_name,
+                            'stocks': k['qty']
+                        }
+                        stocks[k['wh']]['totalStocks'] += k['qty']
+
+                return stocks
+    except:
+        return {}
 
 
 async def fetchPageSupplierProducts(supplier, page):
@@ -308,3 +391,40 @@ async def fetchFindProductPosition(query, nmID, dest):
         print(e)
         # logging.exception(e)
         return None
+
+
+async def fetchProductImages(nmID):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+                URL.product_info.value.format(nmID=nmID),
+                headers=headers) as response:
+
+            try:
+                text = await response.text()
+                data = json.loads(text)
+
+                pics_amount = data.get('data').get('products')[0].get('pics')
+                part = nmID // 1000
+                vol = part // 100
+                basket = getBasket(vol)
+
+                return [f'https://basket-{basket}.wbbasket.ru/vol{vol}/part{part}/{nmID}/images/big/{pics_number}.jpg'
+                        for pics_number
+                        in range(1, pics_amount+1)]
+            except:
+                return None
+
+
+async def fetchProductStocks(nmID):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+                URL.product_info.value.format(nmID=nmID),
+                headers=headers) as response:
+
+            try:
+                data = await response.json()
+                product = data.get('data').get('products')[0]
+
+                return getStocks(product), await getWarehouseStocks(product)
+            except:
+                return None
