@@ -5,7 +5,8 @@ from typing import List
 
 from auxiliary import (fetchPositionAutoadvertProduct, fetchSupplierProducts,
                        fetchFindProductPosition, fetchProductImages,
-                       fetchProductStocks, fetchSearchQuery)
+                       fetchProductStocks, fetchSearchQuery,
+                       fetchProductPrice, fetchProductFeedbacks)
 
 
 class AutoadvertProduct(BaseModel):
@@ -25,6 +26,16 @@ class FindProductPosition(BaseModel):
     query: str = Field(description='Поисковый запрос', min_length=1)
     nmID: int = Field(description='id товара', gt=0)
     dest: int = Field(description='Месторасположение')
+
+
+class ProductPrice(BaseModel):
+    nmID: List[int] = Field(description='Список из id товаров')
+
+    @validator('nmID')
+    def check_positive_numbers(cls, value):
+        if any(num <= 0 for num in value):
+            raise ValueError('The numbers must be greater than zero')
+        return value
 
 
 app = FastAPI()
@@ -58,13 +69,24 @@ async def supplierProducts(supplier: int = Path(description='id продавца
 
 
 @app.get('/api/productImages/{nmID}')
-async def supplierProducts(nmID: int = Path(description='id товара', gt=0)):
+async def productImages(nmID: int = Path(description='id товара', gt=0)):
     result = await fetchProductImages(nmID)
 
     return JSONResponse({
         'nmID': nmID,
         'picsAmount': len(result) if not result is None else None,
         'picsUrls': result
+    })
+
+
+@app.get('/api/productFeedbacks/{nmID}')
+async def productFeedbacks(nmID: int = Path(description='id товара', gt=0)):
+    result = await fetchProductFeedbacks(nmID)
+
+    return JSONResponse({
+        'nmID': nmID,
+        'feedbacksAmount': len(result) if not result is None else None,
+        'feedbacks': result
     })
 
 
@@ -112,3 +134,10 @@ async def positionProducts(data: AutoadvertProduct):
     )
 
     return JSONResponse(positionTotal)
+
+
+@app.post('/api/productPrice/')
+async def productPrice(data: ProductPrice):
+    result = await fetchProductPrice(data.nmID)
+
+    return JSONResponse(result)

@@ -2,6 +2,7 @@ from enum import Enum
 import asyncio
 import aiohttp
 import json
+from math import ceil
 
 
 class URL(Enum):
@@ -10,6 +11,9 @@ class URL(Enum):
     product_info = 'https://card.wb.ru/cards/v2/detail?dest=-1257786&curr=rub&nm={nmID}'
     warehouse_name = 'https://static-basket-01.wbbasket.ru/vol0/data/stores-data.json'
     similar_queries = 'https://similar-queries.wildberries.ru/api/v2/search/query?query={query}&lang=ru'
+    feedbacks = 'https://feedbacks{feedbacks}.wb.ru/feedbacks/v1/{root}'
+    product_image = 'https://basket-{basket}.wbbasket.ru/vol{vol}/part{part}/{nmID}/images/big/{pics_number}.jpg'
+    feedback_image = 'https://feedback{feedback}.wbbasket.ru/vol{vol}/part{part}/{img}/photos/fs.jpg'
 
 
 headers = {
@@ -59,6 +63,39 @@ def getBasket(vol):
         return '16'
 
 
+def getFeedback(vol):
+    if 0 <= vol <= 431:
+        return '01'
+    elif 432 <= vol <= 863:
+        return '02'
+    elif 864 <= vol <= 1199:
+        return '03'
+    elif 1200 <= vol <= 1535:
+        return '04'
+    elif 1536 <= vol <= 1919:
+        return '05'
+    else:
+        return '06'
+
+
+def getPrices(product):
+    try:
+        prices = {}
+        for size in product['sizes']:
+            if size.get('stocks'):
+                salePriceU = size.get('price').get('total') // 100
+                salePrice = size.get('price').get('basic') // 100
+
+                prices[size.get('optionId')] = {
+                    'salePriceU': salePriceU,
+                    'salePrice': salePrice
+                }
+
+        return prices
+    except:
+        return {}
+
+
 def getStocks(product):
     try:
         stocks = 0
@@ -70,7 +107,7 @@ def getStocks(product):
         return 0
 
 
-async def getWarehouseStocks(product):
+async def fetchWarehouseStocks(product):
     try:
         async with aiohttp.ClientSession() as client:
             async with client.get(URL.warehouse_name.value) as response:
@@ -89,13 +126,9 @@ async def getWarehouseStocks(product):
                                 'data': {}
                             }
 
-                        size_name = i.get('name') if i.get(
-                            'name') else 'noneName'
-                        orig_name = i.get('origName') if i.get(
-                            'name') else 'noneName'
-
-                        stocks[k['wh']]['data'][size_name] = {
-                            'origName': orig_name,
+                        stocks[k['wh']]['data'][i.get('optionId')] = {
+                            'name': i.get('name'),
+                            'origName': i.get('origName'),
                             'stocks': k['qty']
                         }
                         stocks[k['wh']]['totalStocks'] += k['qty']
@@ -182,80 +215,11 @@ async def fetchSupplierProducts(supplier):
     return res_products
 
 
-async def fetchSupplierProductsAAAAA(supplier):
-    res_products = {}
-    count_attempts = 1
-
-    while True:
-        page = 1
-        product_id = []
-        try:
-            while True:
-                print(page)
-
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(
-                            URL.supplier_products.value.format(
-                            spp=0, supplier=supplier, page=page),
-                            headers=headers) as response:
-
-                        text = await response.text()
-                        data = json.loads(text)
-                        products = data.get('data').get('products')
-
-                        if products == []:
-                            break
-
-                        for product in products:
-                            colors = [color.get('name')
-                                      for color in product.get('colors')]
-                            salePriceU = product.get('sizes')[0].get(
-                                'price').get('total') // 100
-                            salePrice = product.get('sizes')[0].get(
-                                'price').get('basic') // 100
-
-                            res_products[product.get('id')] = {
-                                'name': product.get('name'),
-                                'salePriceU': salePriceU,
-                                'salePrice': salePrice,
-                                'colors': colors
-                            }
-                            product_id.append(product.get('id'))
-
-                        page += 1
-        except:
-            count_attempts += 1
-
-            if count_attempts == 10:
-                print(f'{count_attempts} attempts ERROR')
-                # logging.error(f'{count_attempts} attempts ERROR')
-                return {}
-
-            await asyncio.sleep(0.1)
-            continue
-
-        if len(res_products) == len(product_id):
-            print(f'{supplier} get_products success')
-            # logging.info(f'{supplier} get_products success')
-            break
-
-        if count_attempts == 10:
-            print(f'{count_attempts} attempts ERROR')
-            # logging.error(f'{count_attempts} attempts ERROR')
-            return {}
-
-        count_attempts += 1
-        await asyncio.sleep(0.1)
-
-    return res_products
-
-
 async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
     try:
         res_position_advert = {supplier: {} for supplier in suppliers}
         res_position_total = {supplier: {} for supplier in suppliers}
 
-        flag_foud = False
         for attemp in range(10):
             print(attemp)
 
@@ -281,13 +245,11 @@ async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
                                 product_id = el.get('id')
 
                                 if supplierId in suppliers:
-                                    if (product_id not in res_position_total.get(supplierId)
-                                            or pagePosition < res_position_total.get(supplierId).get(product_id).get('pagePosition')):
-                                        res_position_total[supplierId][product_id] = {
-                                            'active': False,
-                                            'advertPosition': None,
-                                            'pagePosition': 100 * (page - 1) + pagePosition
-                                        }
+                                    res_position_total[supplierId][product_id] = {
+                                        'active': False,
+                                        'advertPosition': None,
+                                        'pagePosition': 100 * (page - 1) + pagePosition
+                                    }
 
                                 if el.get('log'):
                                     autoadvert.append(
@@ -309,17 +271,14 @@ async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
                                 if supplierId not in suppliers:
                                     continue
 
-                                flag_foud = True
                                 product_id = advert[0]
                                 pagePosition = advert[1]
 
-                                if (product_id not in res_position_advert.get(supplierId)
-                                        or pagePosition < res_position_advert.get(supplierId).get(product_id).get('pagePosition')):
-                                    res_position_advert[supplierId][product_id] = {
-                                        'active': True,
-                                        'advertPosition': advertPosition,
-                                        'pagePosition': pagePosition
-                                    }
+                                res_position_advert[supplierId][product_id] = {
+                                    'active': True,
+                                    'advertPosition': advertPosition,
+                                    'pagePosition': pagePosition
+                                }
 
                                 if product_id in res_position_total.get(supplierId):
                                     res_position_total[supplierId][product_id]['active'] = True
@@ -409,11 +368,87 @@ async def fetchProductImages(nmID):
                 vol = part // 100
                 basket = getBasket(vol)
 
-                return [f'https://basket-{basket}.wbbasket.ru/vol{vol}/part{part}/{nmID}/images/big/{pics_number}.jpg'
+                return [URL.product_image.value.format(basket=basket,
+                                                       vol=vol,
+                                                       part=part,
+                                                       nmID=nmID,
+                                                       pics_number=pics_number)
                         for pics_number
                         in range(1, pics_amount+1)]
+
             except:
                 return None
+
+
+async def fetchFeedbacksData(number_feedbacks, root, nmID):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+                URL.feedbacks.value.format(
+                    feedbacks=number_feedbacks, root=root),
+                headers=headers) as response:
+
+            text = await response.text()
+            data = json.loads(text)
+            feedbacks = data.get('feedbacks')
+
+            if not (feedbacks is None or not feedbacks):
+                result_feedbacks = []
+
+                for feedback in feedbacks:
+                    if feedback.get('nmId') != nmID:
+                        continue
+
+                    photos_tmp = feedback.get('photo')
+                    if not photos_tmp is None:
+                        photos = []
+                        for photo in photos_tmp:
+                            part = photo // 1000
+                            vol = part // 100
+
+                            photos.append(URL.feedback_image.value.format(
+                                feedback=getFeedback(vol),
+                                vol=vol,
+                                part=part,
+                                img=photo
+                            ))
+
+                    else:
+                        photos = None
+
+                    result_feedbacks.append({
+                        'valuation': feedback.get('productValuation'),
+                        'text': feedback.get('text'),
+                        'photos': photos
+                    })
+
+                return result_feedbacks
+
+            return None
+
+
+async def fetchProductFeedbacks(nmID):
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                    URL.product_info.value.format(nmID=nmID),
+                    headers=headers) as response:
+
+                text = await response.text()
+                data = json.loads(text)
+                root = data.get('data').get('products')[0].get('root')
+
+                tasks = [fetchFeedbacksData(feedbacks, root, nmID)
+                         for feedbacks
+                         in [1, 2]]
+                results = await asyncio.gather(*tasks)
+
+                for res in results:
+                    if not res is None:
+                        return res
+
+                return None
+    except:
+        return None
 
 
 async def fetchProductStocks(nmID):
@@ -426,7 +461,7 @@ async def fetchProductStocks(nmID):
                 data = await response.json()
                 product = data.get('data').get('products')[0]
 
-                return getStocks(product), await getWarehouseStocks(product)
+                return getStocks(product), await fetchWarehouseStocks(product)
             except:
                 return None
 
@@ -479,3 +514,52 @@ async def fetchSearchQuery(query):
     results = await asyncio.gather(*tasks)
 
     return results[0], results[1]
+
+
+async def fetchPartialProductPrice(nmID):
+    try:
+        res_prices = {el: {} for el in nmID}
+        nmID_data = ';'.join(map(str, nmID))
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                    URL.product_info.value.format(nmID=nmID_data),
+                    headers=headers) as response:
+
+                data = await response.json()
+                products = data.get('data').get('products')
+
+                for product in products:
+                    res_prices[product.get('id')] = getPrices(product)
+
+                return res_prices
+
+    except Exception as e:
+        print(e)
+        # logging.exception(e)
+        return res_prices
+
+
+async def fetchProductPrice(nmID):
+    try:
+        res_prices = {}
+        tasks = []
+
+        count = 500
+        count_step = ceil(len(nmID) / count)
+
+        for cur_500 in range(count_step):
+            tasks.append(fetchPartialProductPrice(
+                nmID[count*cur_500:count+count*cur_500]))
+
+        results = await asyncio.gather(*tasks)
+
+        for res in results:
+            res_prices.update(res)
+
+        return res_prices
+
+    except Exception as e:
+        print(e)
+        # logging.exception(e)
+        return res_prices
