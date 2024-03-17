@@ -104,7 +104,7 @@ def getStocks(product):
                 stocks += k['qty']
         return stocks
     except:
-        return 0
+        return None
 
 
 async def fetchWarehouseStocks(product):
@@ -116,30 +116,38 @@ async def fetchWarehouseStocks(product):
                                   for warehouse
                                   in warehouse_data}
 
+                result = []
                 stocks = {}
                 for i in product['sizes']:
                     for k in i['stocks']:
                         if k['wh'] not in stocks:
                             stocks[k['wh']] = {
-                                'name': warehouse_name.get(k.get('wh')),
-                                'totalStocks': 0,
-                                'data': {}
+                                'warehouseName': warehouse_name.get(k.get('wh')),
+                                'warehouseStocks': 0,
+                                'sizes': []
                             }
 
-                        stocks[k['wh']]['data'][i.get('optionId')] = {
+                        stocks[k['wh']]['sizes'].append({
+                            'optionID': i.get('optionId'),
                             'name': i.get('name'),
                             'origName': i.get('origName'),
                             'stocks': k['qty']
-                        }
-                        stocks[k['wh']]['totalStocks'] += k['qty']
+                        })
+                        stocks[k['wh']]['warehouseStocks'] += k['qty']
 
-                return stocks
+                for warehouse, data in stocks.items():
+                    tmp = {'warehouseID': warehouse}
+                    tmp.update(data)
+                    result.append(tmp)
+
+                return result
+
     except:
-        return {}
+        return None
 
 
 async def fetchPageSupplierProducts(supplier, page):
-    res_products = {}
+    res_products = []
     product_id = []
 
     print(page)
@@ -159,24 +167,35 @@ async def fetchPageSupplierProducts(supplier, page):
             for product in products:
                 colors = [color.get('name')
                           for color in product.get('colors')]
-                salePriceU = product.get('sizes')[0].get(
-                    'price').get('total') // 100
-                salePrice = product.get('sizes')[0].get(
-                    'price').get('basic') // 100
 
-                res_products[product.get('id')] = {
-                    'name': product.get('name'),
+                salePriceU = salePrice = 0
+                sizes = []
+
+                for size in product['sizes']:
+                    sizes.append({
+                        'optionID': size.get('optionId'),
+                        'sizeName': size.get('name'),
+                        'sizeOrigName': size.get('origName')
+                    })
+                    if not size.get('price') is None:
+                        salePriceU = size.get('price').get('total') // 100
+                        salePrice = size.get('price').get('basic') // 100
+
+                res_products.append({
+                    'productID': product.get('id'),
+                    'productName': product.get('name'),
                     'salePriceU': salePriceU,
                     'salePrice': salePrice,
-                    'colors': colors
-                }
+                    'colors': colors,
+                    'sizes': sizes
+                })
                 product_id.append(product.get('id'))
 
             return res_products, product_id
 
 
 async def fetchSupplierProducts(supplier):
-    res_products = {}
+    res_products = []
     start_page = 1
     check_count_page = 5
     count_attempts = 1
@@ -196,7 +215,10 @@ async def fetchSupplierProducts(supplier):
                     end_find = True
                     break
 
-                res_products.update(res[0])
+                for el in res[0]:
+                    if el.get('productID') not in res_products:
+                        res_products.append(el)
+
                 product_id.extend(res[1])
 
             if end_find:
@@ -212,6 +234,9 @@ async def fetchSupplierProducts(supplier):
 
         break
 
+    if not res_products:
+        return None
+
     return res_products
 
 
@@ -219,6 +244,8 @@ async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
     try:
         res_position_advert = {supplier: {} for supplier in suppliers}
         res_position_total = {supplier: {} for supplier in suppliers}
+
+        found_advert, found_total = False, False
 
         for attemp in range(10):
             print(attemp)
@@ -245,8 +272,9 @@ async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
                                 product_id = el.get('id')
 
                                 if supplierId in suppliers:
+                                    found_total = True
                                     res_position_total[supplierId][product_id] = {
-                                        'active': False,
+                                        'activeAdvert': False,
                                         'advertPosition': None,
                                         'pagePosition': 100 * (page - 1) + pagePosition
                                     }
@@ -271,17 +299,18 @@ async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
                                 if supplierId not in suppliers:
                                     continue
 
+                                found_advert = True
                                 product_id = advert[0]
                                 pagePosition = advert[1]
 
                                 res_position_advert[supplierId][product_id] = {
-                                    'active': True,
+                                    'activeAdvert': True,
                                     'advertPosition': advertPosition,
                                     'pagePosition': pagePosition
                                 }
 
                                 if product_id in res_position_total.get(supplierId):
-                                    res_position_total[supplierId][product_id]['active'] = True
+                                    res_position_total[supplierId][product_id]['activeAdvert'] = True
                                     res_position_total[supplierId][product_id]['advertPosition'] = advertPosition
 
                             except Exception as e:
@@ -290,6 +319,11 @@ async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
                         break
 
                     await asyncio.sleep(0.1)
+
+        if not found_advert:
+            res_position_advert = None
+        if not found_total:
+            res_position_total = None
 
         return res_position_advert, res_position_total
 
@@ -334,7 +368,7 @@ async def fetchFindPageProduct(query, nmID, dest, page):
     return None
 
 
-async def fetchFindProductPosition(query, nmID, dest):
+async def fetchFindProductPosition(nmID, query, dest):
     try:
         tasks = [fetchFindPageProduct(query, nmID, dest, page)
                  for page
@@ -399,8 +433,8 @@ async def fetchFeedbacksData(number_feedbacks, root, nmID):
                         continue
 
                     photos_tmp = feedback.get('photo')
+                    photos = []
                     if not photos_tmp is None:
-                        photos = []
                         for photo in photos_tmp:
                             part = photo // 1000
                             vol = part // 100
@@ -411,9 +445,6 @@ async def fetchFeedbacksData(number_feedbacks, root, nmID):
                                 part=part,
                                 img=photo
                             ))
-
-                    else:
-                        photos = None
 
                     result_feedbacks.append({
                         'valuation': feedback.get('productValuation'),
