@@ -9,11 +9,13 @@ from wb_method.auxiliary import (fetchPositionAutoadvertProduct, fetchSupplierPr
 from wb_method.model import (AutoadvertProduct, FindProductPosition, ProductPrice,
                              ResponseFindProductPosition, ResponseProductImages,
                              ResponseProductFeedbacks, ResponseSupplierProducts,
-                             ResponseProductStocks, ResponseSearchQuery)
+                             ResponseProductStocks, ResponseSearchQuery,
+                             ResponseProductPrice)
 from wb_method.example import (responseFindProductPosition, requestFindProductPosition,
                                responseProductImages, responseProductFeedbacks,
                                responseSearchQuery, responseSupplierProducts,
-                               responseProductStocks)
+                               responseProductStocks, requestProductPrice,
+                               responseProductPrice)
 
 
 router = APIRouter()
@@ -143,8 +145,14 @@ async def positionProducts(data: AutoadvertProduct):
     )
 
 
-@router.post('/productPrice/')
-async def productPrice(data: ProductPrice):
-    result = await fetchProductPrice(data.nmID)
+@router.post('/productPrice/', responses=responseProductPrice)
+async def productPrice(data: Annotated[ProductPrice, Body(openapi_examples=requestProductPrice)]):
+    result, found = await fetchProductPrice(data.nmID)
 
-    return JSONResponse(result)
+    return JSONResponse(
+        ResponseProductPrice(
+            found=found,
+            data=result
+        ).model_dump(),
+        status.HTTP_200_OK if found else status.HTTP_400_BAD_REQUEST
+    )

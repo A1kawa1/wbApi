@@ -1,23 +1,13 @@
 from wb_method.model import (ResponseFindProductPosition, ResponseProductImages,
                              ResponseProductFeedbacks, ResponseSearchQuery,
-                             ResponseSupplierProducts, ResponseProductStocks)
+                             ResponseSupplierProducts, ResponseProductStocks,
+                             ResponseProductPrice)
 
-requestFindProductPosition = [
-    {
-        'nmID': 17572527,
-        'query': 'чехол на iphone 11',
-        'dest': -1257786
-    },
-    {
-        'nmID': 123,
-        'query': 'чехол на iphone 11',
-        'dest': -1257786
-    }
-]
+
 requestFindProductPosition = {
     'normal': {
         'summary': 'Пример с корректным артикулом',
-        'description': 'Позиция скорее всего будет найдена',
+        'description': 'Позиция будет найдена',
         'value': {
             'nmID': 17572527,
             'query': 'чехол на iphone 11',
@@ -34,6 +24,85 @@ requestFindProductPosition = {
         },
     },
 }
+
+
+requestProductPrice = {
+    'normal': {
+        'summary': 'Пример с корректным артикулом',
+        'description': 'Позиция будет найдена',
+        'value': {
+            'nmID': [172033733]
+        },
+    },
+    'invalid': {
+        'summary': 'Пример с некорректным артикулом',
+        'description': 'Позиция не будет найдена',
+        'value': {
+            'nmID': [123]
+        },
+    },
+}
+
+
+responseProductPrice = {
+    200: {
+        'model': ResponseProductPrice,
+        'description': 'Хотя бы один товар был найден',
+        'content': {
+            'application/json': {
+                'example': {
+                    "found": True,
+                    "data": [
+                        {
+                            "productID": 172033733,
+                            "sizes": [
+                                {
+                                    "optionID": 285481526,
+                                    "name": "41-47",
+                                    "origName": "5 ПАР(41-47)",
+                                    "salePriceU": 556,
+                                    "salePrice": 1200
+                                },
+                                {
+                                    "optionID": 285904341,
+                                    "name": "37-41",
+                                    "origName": "5 ПАР(37-41)",
+                                    "salePriceU": 556,
+                                    "salePrice": 1200
+                                },
+                                {
+                                    "optionID": 330497691,
+                                    "name": "36-40",
+                                    "origName": "2 пары",
+                                    "salePriceU": 280,
+                                    "salePrice": 550
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+    },
+    400: {
+        'model': ResponseProductPrice,
+        'description': 'Ни один товар не был найден',
+        'content': {
+            'application/json': {
+                'example': {
+                    "found": False,
+                    "data": [
+                        {
+                            "productID": 123,
+                            "sizes": []
+                        }
+                    ]
+                }
+            }
+        },
+    }
+}
+
 
 responseFindProductPosition = {
     200: {

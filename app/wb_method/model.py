@@ -48,9 +48,20 @@ class SizeProduct(Size):
     ...
 
 
+class SizePrice(Size):
+    salePriceU: int = Field(description='Цена со скидкой')
+    salePrice: int = Field(description='Цена без скидки')
+
+
 class SizeStocks(Size):
     stocks: int = Field(
         description='Кол-во остатков данного размера на текущем складе')
+
+
+class ElProductPrice(BaseModel):
+    productID: int = Field(description='id товара')
+    sizes: Union[List[SizePrice], list] = Field(
+        description='Список размеров с ценами')
 
 
 class Product(BaseModel):
@@ -111,3 +122,10 @@ class ResponseSearchQuery(BaseModel):
     normQuery: str = Field(description='Нормированный поисковый запрос')
     similarQueries: List[str] = Field(
         description='Список походих поисковых запросов')
+
+
+class ResponseProductPrice(BaseModel):
+    found: bool = Field(
+        description='Найдена ли цена хотя бы для одного товара')
+    data: List[ElProductPrice] = Field(
+        description='Список цен по товарам')

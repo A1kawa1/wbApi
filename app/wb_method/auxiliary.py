@@ -80,20 +80,23 @@ def getFeedback(vol):
 
 def getPrices(product):
     try:
-        prices = {}
+        prices = []
         for size in product['sizes']:
             if size.get('stocks'):
                 salePriceU = size.get('price').get('total') // 100
                 salePrice = size.get('price').get('basic') // 100
 
-                prices[size.get('optionId')] = {
+                prices.append({
+                    'optionID': size.get('optionId'),
+                    'name': size.get('name'),
+                    'origName': size.get('origName'),
                     'salePriceU': salePriceU,
                     'salePrice': salePrice
-                }
+                })
 
         return prices
     except:
-        return {}
+        return []
 
 
 def getStocks(product):
@@ -111,7 +114,8 @@ async def fetchWarehouseStocks(product):
     try:
         async with aiohttp.ClientSession() as client:
             async with client.get(URL.warehouse_name.value) as response:
-                warehouse_data = await response.json()
+                text = await response.text()
+                warehouse_data = json.loads(text)
                 warehouse_name = {warehouse.get('id'): warehouse.get('name')
                                   for warehouse
                                   in warehouse_data}
@@ -489,7 +493,8 @@ async def fetchProductStocks(nmID):
                 headers=headers) as response:
 
             try:
-                data = await response.json()
+                text = await response.text()
+                data = json.loads(text)
                 product = data.get('data').get('products')[0]
 
                 return getStocks(product), await fetchWarehouseStocks(product)
@@ -549,7 +554,9 @@ async def fetchSearchQuery(query):
 
 async def fetchPartialProductPrice(nmID):
     try:
-        res_prices = {el: {} for el in nmID}
+        result = []
+        found = False
+        res_prices = {el: [] for el in nmID}
         nmID_data = ';'.join(map(str, nmID))
 
         async with aiohttp.ClientSession() as session:
@@ -557,13 +564,23 @@ async def fetchPartialProductPrice(nmID):
                     URL.product_info.value.format(nmID=nmID_data),
                     headers=headers) as response:
 
-                data = await response.json()
+                text = await response.text()
+                data = json.loads(text)
                 products = data.get('data').get('products')
 
                 for product in products:
                     res_prices[product.get('id')] = getPrices(product)
 
-                return res_prices
+                for productID, sizes in res_prices.items():
+                    if sizes:
+                        found = True
+
+                    result.append({
+                        'productID': productID,
+                        'sizes': sizes
+                    })
+
+                return result, found
 
     except Exception as e:
         print(e)
@@ -573,7 +590,9 @@ async def fetchPartialProductPrice(nmID):
 
 async def fetchProductPrice(nmID):
     try:
-        res_prices = {}
+        nmID = list(set(nmID))
+        res_prices = []
+        found = False
         tasks = []
 
         count = 500
@@ -586,9 +605,11 @@ async def fetchProductPrice(nmID):
         results = await asyncio.gather(*tasks)
 
         for res in results:
-            res_prices.update(res)
+            res_prices.extend(res[0])
+            if res[1]:
+                found = True
 
-        return res_prices
+        return res_prices, found
 
     except Exception as e:
         print(e)
