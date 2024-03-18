@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import List, Dict, Union
+from typing import List, Union
 
 
 class AdvertProduct(BaseModel):
