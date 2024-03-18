@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, validator
 from typing import List, Dict, Union
 
 
-class AutoadvertProduct(BaseModel):
+class AdvertProduct(BaseModel):
     query: str = Field(description='Поисковый запрос', min_length=1)
     suppliers: List[int] = Field(description='Список из id продавцов')
     dest: int = Field(description='Месторасположение')

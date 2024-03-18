@@ -4,11 +4,11 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from typing import Annotated
 
-from wb_method.auxiliary import (fetchPositionAutoadvertProduct, fetchSupplierProducts,
+from wb_method.auxiliary import (fetchPositionAdvertProduct, fetchSupplierProducts,
                                  fetchFindProductPosition, fetchProductImages,
                                  fetchProductStocks, fetchSearchQuery,
                                  fetchProductPrice, fetchProductFeedbacks)
-from wb_method.model import (AutoadvertProduct, FindProductPosition, ProductPrice,
+from wb_method.model import (AdvertProduct, FindProductPosition, ProductPrice,
                              ResponseFindProductPosition, ResponseProductImages,
                              ResponseProductFeedbacks, ResponseSupplierProducts,
                              ResponseProductStocks, ResponseSearchQuery,
@@ -134,11 +134,11 @@ async def findProductPosition(request: Request,
     )
 
 
-@router.post('/positionAutoadvert/',
+@router.post('/positionAdvert/',
              description='Получение позиций автоматических рекламных компаний. 50 запросов в минуту')
 @limiter.limit('50/minute')
-async def positionAutoadvert(request: Request, data: AutoadvertProduct):
-    positionAdvert, _ = await fetchPositionAutoadvertProduct(
+async def positionAdvert(request: Request, data: AdvertProduct):
+    positionAdvert, _ = await fetchPositionAdvertProduct(
         query=data.query,
         dest=data.dest,
         page=data.page,
@@ -158,8 +158,8 @@ async def positionAutoadvert(request: Request, data: AutoadvertProduct):
 @router.post('/positionProducts/',
              description='Получение позиций товаров продавцов. 50 запросов в минуту')
 @limiter.limit('50/minute')
-async def positionProducts(request: Request, data: AutoadvertProduct):
-    _, positionTotal = await fetchPositionAutoadvertProduct(
+async def positionProducts(request: Request, data: AdvertProduct):
+    _, positionTotal = await fetchPositionAdvertProduct(
         query=data.query,
         dest=data.dest,
         page=data.page,

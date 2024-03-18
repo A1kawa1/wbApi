@@ -16,6 +16,10 @@ class URL(Enum):
     feedback_image = 'https://feedback{feedback}.wbbasket.ru/vol{vol}/part{part}/{img}/photos/fs.jpg'
 
 
+advertType = {
+    'b': 'auto',
+    'c': 'search'
+}
 headers = {
     'Accept': '*/*',
     'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
@@ -201,7 +205,7 @@ async def fetchPageSupplierProducts(supplier, page):
 async def fetchSupplierProducts(supplier):
     res_products = []
     start_page = 1
-    check_count_page = 5
+    check_count_page = 10
     count_attempts = 1
 
     while True:
@@ -244,12 +248,13 @@ async def fetchSupplierProducts(supplier):
     return res_products
 
 
-async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
+async def fetchPositionAdvertProduct(query, dest, page, suppliers):
     try:
         res_position_advert = {supplier: {} for supplier in suppliers}
         res_position_total = {supplier: {} for supplier in suppliers}
 
-        found_advert, found_total = False, False
+        result_advert = []
+        result_total = []
 
         for attemp in range(10):
             print(attemp)
@@ -276,10 +281,8 @@ async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
                                 product_id = el.get('id')
 
                                 if supplierId in suppliers:
-                                    found_total = True
                                     res_position_total[supplierId][product_id] = {
                                         'activeAdvert': False,
-                                        'advertPosition': None,
                                         'pagePosition': 100 * (page - 1) + pagePosition
                                     }
 
@@ -289,6 +292,9 @@ async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
                                             product_id,
                                             el.get('log').get(
                                                 'promoPosition') + 1,
+                                            advertType.get(
+                                                el.get('log').get('tp')),
+                                            el.get('log').get('cpm'),
                                             supplierId
                                         )
                                     )
@@ -303,19 +309,24 @@ async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
                                 if supplierId not in suppliers:
                                     continue
 
-                                found_advert = True
                                 product_id = advert[0]
                                 pagePosition = advert[1]
+                                type = advert[2]
+                                cpm = advert[3]
 
                                 res_position_advert[supplierId][product_id] = {
                                     'activeAdvert': True,
+                                    'pagePosition': pagePosition,
                                     'advertPosition': advertPosition,
-                                    'pagePosition': pagePosition
+                                    'type': type,
+                                    'cpm': cpm,
                                 }
 
                                 if product_id in res_position_total.get(supplierId):
                                     res_position_total[supplierId][product_id]['activeAdvert'] = True
                                     res_position_total[supplierId][product_id]['advertPosition'] = advertPosition
+                                    res_position_total[supplierId][product_id]['type'] = type
+                                    res_position_total[supplierId][product_id]['cpm'] = cpm
 
                             except Exception as e:
                                 print(e)
@@ -324,12 +335,33 @@ async def fetchPositionAutoadvertProduct(query, dest, page, suppliers):
 
                     await asyncio.sleep(0.1)
 
-        if not found_advert:
-            res_position_advert = None
-        if not found_total:
-            res_position_total = None
+        for supplierID, product_data in res_position_advert.items():
+            data = []
+            for productID, position_data in product_data.items():
+                data.append({
+                    'productID': productID,
+                    'position': position_data
+                })
 
-        return res_position_advert, res_position_total
+            result_advert.append({
+                'supplierID': supplierID,
+                'data': data
+            })
+
+        for supplierID, product_data in res_position_total.items():
+            data = []
+            for productID, position_data in product_data.items():
+                data.append({
+                    'productID': productID,
+                    'position': position_data
+                })
+
+            result_total.append({
+                'supplierID': supplierID,
+                'data': data
+            })
+
+        return result_advert, result_total
 
     except Exception as e:
         print(e)
