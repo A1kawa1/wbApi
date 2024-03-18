@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Body, Path, Query, status
+from fastapi import APIRouter, Body, Path, Query, Request, status
 from fastapi.responses import JSONResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from typing import Annotated
 
 from wb_method.auxiliary import (fetchPositionAutoadvertProduct, fetchSupplierProducts,
@@ -19,10 +21,15 @@ from wb_method.example import (responseFindProductPosition, requestFindProductPo
 
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
-@router.get('/supplierProducts/{supplier}', responses=responseSupplierProducts)
-async def supplierProducts(supplier: int = Path(description='id продавца', gt=0)):
+@router.get('/supplierProducts/{supplier}',
+            description='Получение товаров продавца. 20 запросов в минуту',
+            responses=responseSupplierProducts)
+@limiter.limit('20/minute')
+async def supplierProducts(request: Request,
+                           supplier: int = Path(description='id продавца', gt=0)):
     result = await fetchSupplierProducts(supplier)
 
     return JSONResponse(
@@ -35,8 +42,12 @@ async def supplierProducts(supplier: int = Path(description='id продавца
     )
 
 
-@router.get('/productImages/{nmID}', responses=responseProductImages)
-async def productImages(nmID: int = Path(description='id товара', gt=0)):
+@router.get('/productImages/{nmID}',
+            description='Получение изображений из карточки товара. 1 запрос в секунду',
+            responses=responseProductImages)
+@limiter.limit('1/second')
+async def productImages(request: Request,
+                        nmID: int = Path(description='id товара', gt=0)):
     result = await fetchProductImages(nmID)
 
     return JSONResponse(
@@ -49,8 +60,12 @@ async def productImages(nmID: int = Path(description='id товара', gt=0)):
     )
 
 
-@router.get('/productFeedbacks/{nmID}', responses=responseProductFeedbacks)
-async def productFeedbacks(nmID: int = Path(description='id товара', gt=0)):
+@router.get('/productFeedbacks/{nmID}',
+            description='Получение отзывов о товаре. 1 запрос в секунду',
+            responses=responseProductFeedbacks)
+@limiter.limit('1/second')
+async def productFeedbacks(request: Request,
+                           nmID: int = Path(description='id товара', gt=0)):
     result = await fetchProductFeedbacks(nmID)
 
     return JSONResponse(
@@ -63,8 +78,12 @@ async def productFeedbacks(nmID: int = Path(description='id товара', gt=0)
     )
 
 
-@router.get('/productStocks/{nmID}', responses=responseProductStocks)
-async def productStocks(nmID: int = Path(description='id товара', gt=0)):
+@router.get('/productStocks/{nmID}',
+            description='Получение остатков товара. 1 запрос в секунду',
+            responses=responseProductStocks)
+@limiter.limit('1/second')
+async def productStocks(request: Request,
+                        nmID: int = Path(description='id товара', gt=0)):
     result = await fetchProductStocks(nmID)
 
     return JSONResponse(
@@ -77,8 +96,12 @@ async def productStocks(nmID: int = Path(description='id товара', gt=0)):
     )
 
 
-@router.get('/searchQuery', responses=responseSearchQuery)
-async def searchQuery(query: str = Query(description='Поисковый запрос', min_length=1)):
+@router.get('/searchQuery',
+            description='Получение нормированного и похожих запросов. 1 запрос в секунду',
+            responses=responseSearchQuery)
+@limiter.limit('1/second')
+async def searchQuery(request: Request,
+                      query: str = Query(description='Поисковый запрос', min_length=1)):
     normQuery, similarQueries = await fetchSearchQuery(query)
 
     return JSONResponse(ResponseSearchQuery(
@@ -88,8 +111,12 @@ async def searchQuery(query: str = Query(description='Поисковый зап�
     ).model_dump())
 
 
-@router.post('/findProductPosition/', responses=responseFindProductPosition)
-async def findProductPosition(data: Annotated[FindProductPosition, Body(openapi_examples=requestFindProductPosition)]):
+@router.post('/findProductPosition/',
+             description='Получение позиции товара на первых 5 страницах. 100 запросов в минуту',
+             responses=responseFindProductPosition)
+@limiter.limit('100/minute')
+async def findProductPosition(request: Request,
+                              data: Annotated[FindProductPosition, Body(openapi_examples=requestFindProductPosition)]):
     result = await fetchFindProductPosition(
         nmID=data.nmID,
         query=data.query,
@@ -107,8 +134,10 @@ async def findProductPosition(data: Annotated[FindProductPosition, Body(openapi_
     )
 
 
-@router.post('/positionAutoadvert/')
-async def positionAutoadvert(data: AutoadvertProduct):
+@router.post('/positionAutoadvert/',
+             description='Получение позиций автоматических рекламных компаний. 50 запросов в минуту')
+@limiter.limit('50/minute')
+async def positionAutoadvert(request: Request, data: AutoadvertProduct):
     positionAdvert, _ = await fetchPositionAutoadvertProduct(
         query=data.query,
         dest=data.dest,
@@ -126,8 +155,10 @@ async def positionAutoadvert(data: AutoadvertProduct):
     )
 
 
-@router.post('/positionProducts/')
-async def positionProducts(data: AutoadvertProduct):
+@router.post('/positionProducts/',
+             description='Получение позиций товаров продавцов. 50 запросов в минуту')
+@limiter.limit('50/minute')
+async def positionProducts(request: Request, data: AutoadvertProduct):
     _, positionTotal = await fetchPositionAutoadvertProduct(
         query=data.query,
         dest=data.dest,
@@ -145,8 +176,12 @@ async def positionProducts(data: AutoadvertProduct):
     )
 
 
-@router.post('/productPrice/', responses=responseProductPrice)
-async def productPrice(data: Annotated[ProductPrice, Body(openapi_examples=requestProductPrice)]):
+@router.post('/productPrice/',
+             description='Получение цен товаров. 1 запрос в секунду',
+             responses=responseProductPrice)
+@limiter.limit('1/second')
+async def productPrice(request: Request,
+                       data: Annotated[ProductPrice, Body(openapi_examples=requestProductPrice)]):
     result, found = await fetchProductPrice(data.nmID)
 
     return JSONResponse(
