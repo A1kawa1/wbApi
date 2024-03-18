@@ -165,12 +165,15 @@ async def fetchPageSupplierProducts(supplier, page):
                 spp=0, supplier=supplier, page=page),
                 headers=headers) as response:
 
+            if response.status != 200:
+                return None
+
             text = await response.text()
             data = json.loads(text)
             products = data.get('data').get('products')
 
             if products == []:
-                return None
+                return []
 
             for product in products:
                 colors = [color.get('name')
@@ -204,12 +207,13 @@ async def fetchPageSupplierProducts(supplier, page):
 
 async def fetchSupplierProducts(supplier):
     res_products = []
-    start_page = 1
     check_count_page = 10
     count_attempts = 1
 
     while True:
         product_id = []
+        start_page = 1
+        error_page = False
 
         while True:
             end_find = False
@@ -220,25 +224,33 @@ async def fetchSupplierProducts(supplier):
 
             for res in results:
                 if res is None:
-                    end_find = True
+                    error_page = True
                     break
 
-                for el in res[0]:
-                    if el.get('productID') not in res_products:
-                        res_products.append(el)
+                if res == []:
+                    end_find = True
+                else:
+                    for el in res[0]:
+                        if el.get('productID') not in res_products:
+                            res_products.append(el)
 
-                product_id.extend(res[1])
+                    product_id.extend(res[1])
+
+            if error_page:
+                break
 
             if end_find:
                 break
+
             start_page += check_count_page
 
-        if count_attempts == 10:
+        if count_attempts == 5:
             print(f'{count_attempts} attempts ERROR')
             return None
 
-        if len(res_products) != len(product_id):
+        if len(res_products) != len(product_id) or error_page:
             count_attempts += 1
+            continue
 
         break
 
@@ -443,12 +455,12 @@ async def fetchFindProductPosition(nmID, query, dest):
 
 
 async def fetchProductImages(nmID):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(
-                URL.product_info.value.format(nmID=nmID),
-                headers=headers) as response:
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                    URL.product_info.value.format(nmID=nmID),
+                    headers=headers) as response:
 
-            try:
                 text = await response.text()
                 data = json.loads(text)
 
@@ -465,8 +477,8 @@ async def fetchProductImages(nmID):
                         for pics_number
                         in range(1, pics_amount+1)]
 
-            except:
-                return None
+    except:
+        return None
 
 
 async def fetchFeedbacksData(number_feedbacks, root, nmID):
@@ -538,19 +550,19 @@ async def fetchProductFeedbacks(nmID):
 
 
 async def fetchProductStocks(nmID):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(
-                URL.product_info.value.format(nmID=nmID),
-                headers=headers) as response:
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                    URL.product_info.value.format(nmID=nmID),
+                    headers=headers) as response:
 
-            try:
                 text = await response.text()
                 data = json.loads(text)
                 product = data.get('data').get('products')[0]
 
                 return getStocks(product), await fetchWarehouseStocks(product)
-            except:
-                return None
+    except:
+        return None
 
 
 async def fetchQuery(query, typeQuery):
@@ -562,36 +574,23 @@ async def fetchQuery(query, typeQuery):
     else:
         return None
 
-    for attemp in range(10):
-        print(attemp)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+                url,
+                headers=headers) as response:
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                    url,
-                    headers=headers) as response:
+            if response.status == 200:
+                text = await response.text()
+                data = json.loads(text)
 
-                if response.status == 200:
-                    try:
-                        text = await response.text()
-                        data = json.loads(text)
+                if typeQuery == 'normquery':
+                    result = data.get('metadata').get('normquery')
+                elif typeQuery == 'similar_queries':
+                    result = data.get('query')
 
-                        if typeQuery == 'normquery':
-                            result = data.get('metadata').get('normquery')
-                        elif typeQuery == 'similar_queries':
-                            result = data.get('query')
+                return result
 
-                    except Exception as e:
-                        print(e)
-                        # logging.exception(e)
-                        continue
-
-                    break
-                await asyncio.sleep(0.1)
-
-    else:
-        result = None
-
-    return result
+            return None
 
 
 async def fetchSearchQuery(query):

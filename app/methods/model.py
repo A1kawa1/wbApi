@@ -162,7 +162,7 @@ class ResponseProductStocks(BaseModel):
 class ResponseSearchQuery(BaseModel):
     query: str = Field(description='Поисковый запрос')
     normQuery: str = Field(description='Нормированный поисковый запрос')
-    similarQueries: List[str] = Field(
+    similarQueries: Union[List[str], list] = Field(
         description='Список походих поисковых запросов')
 
 

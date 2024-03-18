@@ -109,8 +109,8 @@ async def searchQuery(request: Request,
 
     return JSONResponse(ResponseSearchQuery(
         query=query,
-        normQuery=normQuery,
-        similarQueries=similarQueries
+        normQuery=normQuery if not normQuery is None else '',
+        similarQueries=similarQueries if not similarQueries is None else []
     ).model_dump())
 
 
