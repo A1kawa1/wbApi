@@ -250,6 +250,8 @@ async def fetchSupplierProducts(supplier):
 
 async def fetchPositionAdvertProduct(query, dest, page, suppliers):
     try:
+        suppliers = list(set(suppliers))
+
         res_position_advert = {supplier: {} for supplier in suppliers}
         res_position_total = {supplier: {} for supplier in suppliers}
 
@@ -303,16 +305,24 @@ async def fetchPositionAdvertProduct(query, dest, page, suppliers):
                             print(e)
                             # logging.exception(e)
 
-                        for advertPosition, advert in enumerate(autoadvert, 1):
+                        advertPos = {
+                            'auto': 0,
+                            'search': 0
+                        }
+                        for advert in autoadvert:
                             try:
                                 supplierId = advert[-1]
+                                type = advert[2]
+                                advertPos[type] += 1
+
                                 if supplierId not in suppliers:
                                     continue
 
                                 product_id = advert[0]
                                 pagePosition = advert[1]
-                                type = advert[2]
                                 cpm = advert[3]
+
+                                advertPosition = advertPos.get(type)
 
                                 res_position_advert[supplierId][product_id] = {
                                     'activeAdvert': True,
@@ -335,6 +345,8 @@ async def fetchPositionAdvertProduct(query, dest, page, suppliers):
 
                     await asyncio.sleep(0.1)
 
+        found_advert, found_total = False, False
+
         for supplierID, product_data in res_position_advert.items():
             data = []
             for productID, position_data in product_data.items():
@@ -342,6 +354,9 @@ async def fetchPositionAdvertProduct(query, dest, page, suppliers):
                     'productID': productID,
                     'position': position_data
                 })
+
+            if data:
+                found_advert = True
 
             result_advert.append({
                 'supplierID': supplierID,
@@ -356,12 +371,15 @@ async def fetchPositionAdvertProduct(query, dest, page, suppliers):
                     'position': position_data
                 })
 
+            if data:
+                found_total = True
+
             result_total.append({
                 'supplierID': supplierID,
                 'data': data
             })
 
-        return result_advert, result_total
+        return result_advert, result_total, found_advert, found_total
 
     except Exception as e:
         print(e)
@@ -406,9 +424,10 @@ async def fetchFindPageProduct(query, nmID, dest, page):
 
 async def fetchFindProductPosition(nmID, query, dest):
     try:
+        page_count = 10
         tasks = [fetchFindPageProduct(query, nmID, dest, page)
                  for page
-                 in range(1, 6)]
+                 in range(1, page_count+1)]
         results = await asyncio.gather(*tasks)
 
         for res in results:

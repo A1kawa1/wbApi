@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import List, Union
+from typing import List, Union, Literal, Optional
 
 
 class AdvertProduct(BaseModel):
@@ -29,6 +29,48 @@ class ProductPrice(BaseModel):
         if any(num <= 0 for num in value):
             raise ValueError('The numbers must be greater than zero')
         return value
+
+
+class CurPositionAdvert(BaseModel):
+    activeAdvert: bool = Field(description='Активна ли кампания (всегда True)')
+    pagePosition: int = Field(description='Позиция на странице')
+    advertPosition: int = Field(
+        description='Позиция среди рекламных кампаний данного типа')
+    type: Literal['search', 'auto'] = Field(
+        description='Тип рекламной кампании')
+    cpm: int = Field(description='Ставка')
+
+
+class CurPositionProduct(BaseModel):
+    activeAdvert: bool = Field(description='Активна ли кампания')
+    pagePosition: int = Field(description='Позиция на странице')
+    advertPosition: Optional[int] = Field(
+        description='Позиция среди рекламных кампаний данного типа, елси РК активна')
+    type: Optional[Literal['search', 'auto']] = Field(
+        description='Тип рекламной кампании, елси РК активна')
+    cpm: Optional[int] = Field(description='Ставка, елси РК активна')
+
+
+class PositionAdvertData(BaseModel):
+    productID: int = Field(description='id товара')
+    position: CurPositionAdvert
+
+
+class PositionProductData(BaseModel):
+    productID: int = Field(description='id товара')
+    position: CurPositionProduct
+
+
+class PositionAdvert(BaseModel):
+    supplierID: int = Field(description='id продавца')
+    data: Union[List[PositionAdvertData], list] = Field(
+        description='Список позиций по товарам данного продавца')
+
+
+class PositionProduct(BaseModel):
+    supplierID: int = Field(description='id продавца')
+    data: Union[List[PositionProductData], list] = Field(
+        description='Список позиций по товарам данного продавца')
 
 
 class Feedbacks(BaseModel):
@@ -129,3 +171,20 @@ class ResponseProductPrice(BaseModel):
         description='Найдена ли цена хотя бы для одного товара')
     data: List[ElProductPrice] = Field(
         description='Список цен по товарам')
+
+
+class ResponsePositionAdvertProduct(BaseModel):
+    query: str = Field(description='Поисковый запрос')
+    page: int = Field(description='Номер поисковой страницы')
+    found: bool = Field(
+        description='Найдена ли хотя бы одна позиция хотя бы одного продавца')
+
+
+class ResponsePositionAdvert(ResponsePositionAdvertProduct):
+    positionAdvert: List[PositionAdvert] = Field(
+        description='Список позиций по продавцам')
+
+
+class ResponsePositionProduct(ResponsePositionAdvertProduct):
+    positionTotal: List[PositionProduct] = Field(
+        description='Список позиций по продавцам')

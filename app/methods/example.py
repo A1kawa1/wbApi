@@ -1,7 +1,8 @@
-from wb_method.model import (ResponseFindProductPosition, ResponseProductImages,
+from methods.model import (ResponseFindProductPosition, ResponseProductImages,
                              ResponseProductFeedbacks, ResponseSearchQuery,
                              ResponseSupplierProducts, ResponseProductStocks,
-                             ResponseProductPrice)
+                             ResponseProductPrice, ResponsePositionAdvert,
+                             ResponsePositionProduct)
 
 
 requestFindProductPosition = {
@@ -454,4 +455,186 @@ responseSearchQuery = {
             }
         },
     }
+}
+
+
+requestPositionAdvertProduct = {
+    'normal': {
+        'summary': 'Пример с корректными продавцами',
+        'description': 'Позиции не будут найдены',
+        'value': {
+            "query": "чехол на iphone 11",
+            "dest": -1257786,
+            "page": 1,
+            "suppliers": [90788, 519187]
+        },
+    },
+    'invalid': {
+        'summary': 'Пример с некорректным продавцами',
+        'description': 'Позиции не будут найдены',
+        'value': {
+            "query": "чехол на iphone 11",
+            "dest": -1257786,
+            "page": 1,
+            "suppliers": [123, 312]
+        },
+    },
+}
+
+
+responsePositionAdvert = {
+    200: {
+        'model': ResponsePositionAdvert,
+        'description': 'Была найдена хотя бы одна позиция',
+        'content': {
+            'application/json': {
+                'example': {
+                    "query": "чехол на iphone 11",
+                    "page": 1,
+                    "found": True,
+                    "positionAdvert": [
+                        {
+                            "supplierID": 519187,
+                            "data": [
+                                {
+                                    "productID": 118260932,
+                                    "position": {
+                                        "activeAdvert": True,
+                                        "pagePosition": 4,
+                                        "advertPosition": 1,
+                                        "type": "search",
+                                        "cpm": 155
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "supplierID": 90788,
+                            "data": [
+                                {
+                                    "productID": 17572527,
+                                    "position": {
+                                        "activeAdvert": True,
+                                        "pagePosition": 1,
+                                        "advertPosition": 1,
+                                        "type": "auto",
+                                        "cpm": 125
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+    },
+    400: {
+        'model': ResponsePositionAdvert,
+        'description': 'Не было найдено ни одной позиции',
+        'content': {
+            'application/json': {
+                'example': {
+                    "query": "чехол на iphone 11",
+                    "page": 1,
+                    "found": False,
+                    "positionAdvert": [
+                        {
+                            "supplierID": 312,
+                            "data": []
+                        },
+                        {
+                            "supplierID": 123,
+                            "data": []
+                        }
+                    ]
+                }
+            }
+        },
+    },
+}
+
+
+responsePositionProduct = {
+    200: {
+        'model': ResponsePositionProduct,
+        'description': 'Была найдена хотя бы одна позиция',
+        'content': {
+            'application/json': {
+                'example': {
+                    "query": "чехол на iphone 11",
+                    "page": 1,
+                    "found": True,
+                    "positionTotal": [
+                        {
+                            "supplierID": 519187,
+                            "data": [
+                                {
+                                    "productID": 118260932,
+                                    "position": {
+                                        "activeAdvert": True,
+                                        "pagePosition": 2,
+                                        "advertPosition": 1,
+                                        "type": "search",
+                                        "cpm": 155
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "supplierID": 90788,
+                            "data": [
+                                {
+                                    "productID": 17572527,
+                                    "position": {
+                                        "activeAdvert": True,
+                                        "pagePosition": 1,
+                                        "advertPosition": 1,
+                                        "type": "auto",
+                                        "cpm": 125
+                                    }
+                                },
+                                {
+                                    "productID": 28789609,
+                                    "position": {
+                                        "activeAdvert": False,
+                                        "pagePosition": 58
+                                    }
+                                },
+                                {
+                                    "productID": 43646539,
+                                    "position": {
+                                        "activeAdvert": False,
+                                        "pagePosition": 65
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+    },
+    400: {
+        'model': ResponsePositionProduct,
+        'description': 'Не было найдено ни одной позиции',
+        'content': {
+            'application/json': {
+                'example': {
+                    "query": "чехол на iphone 11",
+                    "page": 1,
+                    "found": False,
+                    "positionTotal": [
+                        {
+                            "supplierID": 312,
+                            "data": []
+                        },
+                        {
+                            "supplierID": 123,
+                            "data": []
+                        }
+                    ]
+                }
+            }
+        },
+    },
 }
