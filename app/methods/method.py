@@ -114,7 +114,7 @@ async def searchQuery(request: Request,
     ).model_dump())
 
 
-@router.post('/findProductPosition/',
+@router.post('/findProductPosition',
              description='Получение позиции товара на первых 10 страницах.',
              responses=responseFindProductPosition)
 @limiter.limit('2/minute', exempt_when=exempt_when_dev)
@@ -137,7 +137,7 @@ async def findProductPosition(request: Request,
     )
 
 
-@router.post('/positionAdvert/',
+@router.post('/positionAdvert',
              description='Получение позиций автоматических рекламных кампаний.',
              responses=responsePositionAdvert)
 @limiter.limit('2/minute', exempt_when=exempt_when_dev)
@@ -161,7 +161,7 @@ async def positionAdvert(request: Request,
     )
 
 
-@router.post('/positionProduct/',
+@router.post('/positionProduct',
              description='Получение позиций товаров продавцов.',
              responses=responsePositionProduct)
 @limiter.limit('2/minute', exempt_when=exempt_when_dev)
@@ -185,7 +185,7 @@ async def positionProduct(request: Request,
     )
 
 
-@router.post('/productPrice/',
+@router.post('/productPrice',
              description='Получение цен товаров.',
              responses=responseProductPrice)
 @limiter.limit('2/minute', exempt_when=exempt_when_dev)
