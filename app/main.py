@@ -17,7 +17,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.include_router(router, prefix='/api', tags=['Методы WB'])
 
 
-@app.middleware("http")
+@app.middleware('http')
 async def request_context_middleware(
     request: Request, call_next: Callable[..., Awaitable[RT]]
 ) -> RT:
