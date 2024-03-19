@@ -10,7 +10,13 @@ from limiter.exempt import _request_ctx_var, RT
 from config import apitally_id
 
 
-app = FastAPI(title='WB Api', version='1.0.0')
+app = FastAPI(
+    title='WB Api',
+    version='1.0.0',
+    description=('Это сервис предоставляющий необхдимую информацию для автоматизации процесса торговли на WB. '
+                 'Ограничения на каждый метод 2 запроса в минуту. '
+                 'Для безлимитного доступа и по всем вопросам сотрудничества пишите в telegram @A1kawa')
+)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

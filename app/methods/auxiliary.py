@@ -325,7 +325,9 @@ async def fetchPositionAdvertProduct(query, dest, page, suppliers):
                             try:
                                 supplierId = advert[-1]
                                 type = advert[2]
-                                advertPos[type] += 1
+
+                                if not type is None:
+                                    advertPos[type] += 1
 
                                 if supplierId not in suppliers:
                                     continue
