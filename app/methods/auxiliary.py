@@ -206,11 +206,11 @@ async def fetchPageSupplierProducts(supplier, page):
 
 
 async def fetchSupplierProducts(supplier):
-    res_products = []
     check_count_page = 10
     count_attempts = 1
 
     while True:
+        res_products = []
         product_id = []
         start_page = 1
         error_page = False
