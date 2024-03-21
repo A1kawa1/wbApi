@@ -4,3 +4,4 @@ pydantic
 aiohttp
 slowapi
 apitally[fastapi]
+python-dotenv

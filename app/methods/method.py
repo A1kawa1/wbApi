@@ -20,7 +20,8 @@ from methods.example import (responseFindProductPosition, requestFindProductPosi
                              responseProductStocks, requestProductPrice,
                              responseProductPrice, requestPositionAdvertProduct,
                              responsePositionAdvert, responsePositionProduct)
-from limiter.exempt import exempt_when_dev
+from limiter.exempt import exempt_tokens
+from limiter.tokens import get_limit_tokens
 
 
 router = APIRouter()
@@ -30,7 +31,7 @@ limiter = Limiter(key_func=get_remote_address)
 @router.get('/supplierProducts/{supplier}',
             description='Получение товаров продавца.',
             responses=responseSupplierProducts)
-@limiter.limit('2/minute', exempt_when=exempt_when_dev)
+@limiter.limit(get_limit_tokens, exempt_when=exempt_tokens)
 async def supplierProducts(request: Request,
                            supplier: int = Path(description='id продавца', gt=0)):
     result = await fetchSupplierProducts(supplier)
@@ -48,7 +49,7 @@ async def supplierProducts(request: Request,
 @router.get('/productImages/{nmID}',
             description='Получение изображений из карточки товара.',
             responses=responseProductImages)
-@limiter.limit('2/minute', exempt_when=exempt_when_dev)
+@limiter.limit(get_limit_tokens, exempt_when=exempt_tokens)
 async def productImages(request: Request,
                         nmID: int = Path(description='id товара', gt=0)):
     result = await fetchProductImages(nmID)
@@ -66,7 +67,7 @@ async def productImages(request: Request,
 @router.get('/productFeedbacks/{nmID}',
             description='Получение отзывов о товаре.',
             responses=responseProductFeedbacks)
-@limiter.limit('2/minute', exempt_when=exempt_when_dev)
+@limiter.limit(get_limit_tokens, exempt_when=exempt_tokens)
 async def productFeedbacks(request: Request,
                            nmID: int = Path(description='id товара', gt=0)):
     result = await fetchProductFeedbacks(nmID)
@@ -84,7 +85,7 @@ async def productFeedbacks(request: Request,
 @router.get('/productStocks/{nmID}',
             description='Получение остатков товара.',
             responses=responseProductStocks)
-@limiter.limit('2/minute', exempt_when=exempt_when_dev)
+@limiter.limit(get_limit_tokens, exempt_when=exempt_tokens)
 async def productStocks(request: Request,
                         nmID: int = Path(description='id товара', gt=0)):
     result = await fetchProductStocks(nmID)
@@ -102,7 +103,7 @@ async def productStocks(request: Request,
 @router.get('/searchQuery',
             description='Получение нормированного и похожих запросов.',
             responses=responseSearchQuery)
-@limiter.limit('2/minute', exempt_when=exempt_when_dev)
+@limiter.limit(get_limit_tokens, exempt_when=exempt_tokens)
 async def searchQuery(request: Request,
                       query: str = Query(description='Поисковый запрос', min_length=1)):
     normQuery, similarQueries = await fetchSearchQuery(query)
@@ -117,7 +118,7 @@ async def searchQuery(request: Request,
 @router.post('/findProductPosition',
              description='Получение позиции товара на первых 10 страницах.',
              responses=responseFindProductPosition)
-@limiter.limit('2/minute', exempt_when=exempt_when_dev)
+@limiter.limit(get_limit_tokens, exempt_when=exempt_tokens)
 async def findProductPosition(request: Request,
                               data: Annotated[FindProductPosition, Body(openapi_examples=requestFindProductPosition)]):
     result = await fetchFindProductPosition(
@@ -140,7 +141,7 @@ async def findProductPosition(request: Request,
 @router.post('/positionAdvert',
              description='Получение позиций автоматических рекламных кампаний.',
              responses=responsePositionAdvert)
-@limiter.limit('2/minute', exempt_when=exempt_when_dev)
+@limiter.limit(get_limit_tokens, exempt_when=exempt_tokens)
 async def positionAdvert(request: Request,
                          data: Annotated[AdvertProduct, Body(openapi_examples=requestPositionAdvertProduct)]):
     positionAdvert, _, found, _ = await fetchPositionAdvertProduct(
@@ -164,7 +165,7 @@ async def positionAdvert(request: Request,
 @router.post('/positionProduct',
              description='Получение позиций товаров продавцов.',
              responses=responsePositionProduct)
-@limiter.limit('2/minute', exempt_when=exempt_when_dev)
+@limiter.limit(get_limit_tokens, exempt_when=exempt_tokens)
 async def positionProduct(request: Request,
                           data: Annotated[AdvertProduct, Body(openapi_examples=requestPositionAdvertProduct)]):
     _, positionTotal, _, found = await fetchPositionAdvertProduct(
@@ -188,7 +189,7 @@ async def positionProduct(request: Request,
 @router.post('/productPrice',
              description='Получение цен товаров.',
              responses=responseProductPrice)
-@limiter.limit('2/minute', exempt_when=exempt_when_dev)
+@limiter.limit(get_limit_tokens, exempt_when=exempt_tokens)
 async def productPrice(request: Request,
                        data: Annotated[ProductPrice, Body(openapi_examples=requestProductPrice)]):
     result, found = await fetchProductPrice(data.nmID)
