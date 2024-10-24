@@ -9,11 +9,11 @@ from methods.auxiliary import (fetchPositionAdvertProduct, fetchSupplierProducts
                                fetchProductStocks, fetchSearchQuery,
                                fetchProductPrice, fetchProductFeedbacks)
 from methods.model import (AdvertProduct, FindProductPosition, ProductPrice,
-                           ResponseFindProductPosition, ResponseProductImages,
-                           ResponseProductFeedbacks, ResponseSupplierProducts,
-                           ResponseProductStocks, ResponseSearchQuery,
-                           ResponseProductPrice, ResponsePositionAdvert,
-                           ResponsePositionProduct)
+                           ResponseFindProductsPositionItem, ResponseFindProductsPosition,
+                           ResponseProductImages, ResponseProductFeedbacks,
+                           ResponseSupplierProducts, ResponseProductStocks,
+                           ResponseSearchQuery, ResponseProductPrice,
+                           ResponsePositionAdvert, ResponsePositionProduct)
 from methods.example import (responseFindProductPosition, requestFindProductPosition,
                              responseProductImages, responseProductFeedbacks,
                              responseSearchQuery, responseSupplierProducts,
@@ -115,11 +115,11 @@ async def searchQuery(request: Request,
     ).model_dump())
 
 
-@router.post('/findProductPosition',
-             description='Получение позиции товара на первых 10 страницах.',
+@router.post('/findProductsPosition',
+             description='Получение позиций товаров на первых 10 страницах.',
              responses=responseFindProductPosition)
 @limiter.limit(get_limit_tokens, exempt_when=exempt_tokens)
-async def findProductPosition(request: Request,
+async def findProductsPosition(request: Request,
                               data: Annotated[FindProductPosition, Body(openapi_examples=requestFindProductPosition)]):
     result = await fetchFindProductPosition(
         nmID=data.nmID,
@@ -128,11 +128,17 @@ async def findProductPosition(request: Request,
     )
 
     return JSONResponse(
-        ResponseFindProductPosition(
+        ResponseFindProductsPosition(
             nmID=data.nmID,
             query=data.query,
-            position=result if not result is None else -1,
-            exists=not result is None
+            positions=[
+                ResponseFindProductsPositionItem(
+                    nmID=nmId,
+                    position=position
+                ).model_dump()
+                for nmId, position in result.items()
+            ] if not result is None else [],
+            exists=not result is None and len(result) > 0
         ).model_dump(),
         status.HTTP_200_OK if not result is None else status.HTTP_400_BAD_REQUEST
     )

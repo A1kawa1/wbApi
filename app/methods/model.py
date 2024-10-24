@@ -16,10 +16,15 @@ class AdvertProduct(BaseModel):
 
 
 class FindProductPosition(BaseModel):
-    nmID: int = Field(description='id товара', gt=0)
+    nmID: List[int] = Field(description='id товаров')
     query: str = Field(description='Поисковый запрос', min_length=1)
     dest: int = Field(description='Месторасположение')
 
+    @validator('nmID')
+    def check_positive_numbers(cls, value):
+        if any(num <= 0 for num in value):
+            raise ValueError('The numbers must be greater than zero')
+        return value
 
 class ProductPrice(BaseModel):
     nmID: List[int] = Field(description='Список из id товаров')
@@ -125,11 +130,16 @@ class Warehouse(BaseModel):
         description='Список размеров с остатками')
 
 
-class ResponseFindProductPosition(BaseModel):
+class ResponseFindProductsPositionItem(BaseModel):
     nmID: int = Field(description='id товара')
+    position: int = Field(description='Позиця товара')
+
+
+class ResponseFindProductsPosition(BaseModel):
+    nmID: List[int] = Field(description='id товара')
     query: str = Field(description='Поисковый запрос')
     exists: bool = Field(description='Найден ли был товар')
-    position: int = Field(description='Позиця товара')
+    positions: List[ResponseFindProductsPositionItem] = Field(description='Позиции товаров')
 
 
 class ResponseSupplierProducts(BaseModel):

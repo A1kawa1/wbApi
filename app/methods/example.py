@@ -1,4 +1,4 @@
-from methods.model import (ResponseFindProductPosition, ResponseProductImages,
+from methods.model import (ResponseFindProductsPosition, ResponseProductImages,
                              ResponseProductFeedbacks, ResponseSearchQuery,
                              ResponseSupplierProducts, ResponseProductStocks,
                              ResponseProductPrice, ResponsePositionAdvert,
@@ -10,7 +10,7 @@ requestFindProductPosition = {
         'summary': 'Пример с корректным артикулом',
         'description': 'Позиция будет найдена',
         'value': {
-            'nmID': 17572527,
+            'nmID': [17572527],
             'query': 'чехол на iphone 11',
             'dest': -1257786
         },
@@ -19,7 +19,7 @@ requestFindProductPosition = {
         'summary': 'Пример с некорректным артикулом',
         'description': 'Позиция не будет найдена',
         'value': {
-            'nmID': 123,
+            'nmID': [123],
             'query': 'чехол на iphone 11',
             'dest': -1257786
         },
@@ -107,28 +107,31 @@ responseProductPrice = {
 
 responseFindProductPosition = {
     200: {
-        'model': ResponseFindProductPosition,
+        'model': ResponseFindProductsPosition,
         'description': 'Позиция была найдена',
         'content': {
             'application/json': {
                 'example': {
-                    'nmID': 17572527,
+                    'nmID': [17572527],
                     'query': 'чехол на iphone 11',
-                    'position': 1,
+                    'positions': [{
+                        'nmID': 17572527,
+                        'position': 11
+                    }],
                     'exists': True
                 }
             }
         },
     },
     400: {
-        'model': ResponseFindProductPosition,
+        'model': ResponseFindProductsPosition,
         'description': 'Позиция не была найдена',
         'content': {
             'application/json': {
                 'example': {
-                    'nmID': 123,
+                    'nmID': [123],
                     'query': 'чехол на iphone 11',
-                    'position': -1,
+                    'position': [],
                     'exists': False
                 }
             }

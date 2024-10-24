@@ -405,7 +405,8 @@ async def fetchFindPageProduct(query, nmID, dest, page):
     print('!!!!!!!!', page)
     for attemp in range(10):
         print(page, attemp)
-
+        result = {}
+        
         async with aiohttp.ClientSession() as session:
             async with session.get(
                     URL.wildberries_position_autoadvert.value.format(
@@ -422,8 +423,8 @@ async def fetchFindPageProduct(query, nmID, dest, page):
                             continue
 
                         for position, product in enumerate(products, 1):
-                            if product.get('id') == nmID:
-                                return 100 * (page-1) + position
+                            if product.get('id') in nmID:
+                                result[product.get('id')] = 100 * (page-1) + position
                     except Exception as e:
                         print(e)
                         # logging.exception(e)
@@ -433,22 +434,25 @@ async def fetchFindPageProduct(query, nmID, dest, page):
 
                 await asyncio.sleep(0.1)
 
-    return None
+    return result
 
 
 async def fetchFindProductPosition(nmID, query, dest):
     try:
         page_count = 10
+        result = {}
+        
         tasks = [fetchFindPageProduct(query, nmID, dest, page)
                  for page
                  in range(1, page_count+1)]
         results = await asyncio.gather(*tasks)
 
         for res in results:
-            if not res is None:
-                return res
+            print(res)
+            for key, value in res.items():
+                result[key] = value
 
-        return None
+        return result
 
     except Exception as e:
         print(e)
